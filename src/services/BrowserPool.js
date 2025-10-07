@@ -41,7 +41,7 @@ class BrowserPool {
       errors: 0
     };
     
-    // Browser launch options
+    // Browser launch options with improved stability flags
     this.launchOptions = {
       headless: 'new',
       args: [
@@ -49,9 +49,33 @@ class BrowserPool {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-blink-features=AutomationControlled',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-breakpad',
+        '--disable-component-extensions-with-background-pages',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--disable-renderer-backgrounding',
+        '--enable-features=NetworkService,NetworkServiceInProcess',
+        '--force-color-profile=srgb',
+        '--hide-scrollbars',
+        '--metrics-recording-only',
+        '--mute-audio',
+        '--no-default-browser-check',
+        '--no-pings'
       ],
       timeout: this.launchTimeout,
+      ignoreHTTPSErrors: true,
       ...options.launchOptions
     };
 
