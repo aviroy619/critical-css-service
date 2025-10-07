@@ -4,6 +4,9 @@ import config from './config.js';
 
 /**
  * Connect to MongoDB using configuration from config.js
+ * Creates two connections:
+ * 1. Primary: cssgenerationservice (for storing CSS records)
+ * 2. Secondary: RLPlatforms (for reading Shopify app data)
  * @returns {Promise<void>}
  */
 export async function connectDB() {
@@ -16,7 +19,7 @@ export async function connectDB() {
       useUnifiedTopology: true,
     };
 
-    // Connect to MongoDB
+    // Connect to MongoDB (primary connection)
     await mongoose.connect(config.mongo.uri, options);
 
     // Success message
@@ -27,7 +30,31 @@ export async function connectDB() {
       console.log(`   Host: ${mongoose.connection.host}`);
     }
 
-    // Handle connection events
+    // Create secondary connection to Shopify database (RLPlatforms)
+    const shopifyUri = 'mongodb+srv://rlplatforms_user:StrongPass123!@shopify.6c0ab2b.mongodb.net/RLPlatforms?retryWrites=true&w=majority&appName=shopify';
+    
+    const shopifyConnection = mongoose.createConnection(shopifyUri, {
+      dbName: 'RLPlatforms',
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    shopifyConnection.on('connected', () => {
+      console.log(`✅ Secondary MongoDB connection to RLPlatforms established`);
+    });
+
+    shopifyConnection.on('error', (err) => {
+      console.error('❌ Secondary connection error:', err.message);
+    });
+
+    shopifyConnection.on('disconnected', () => {
+      console.warn('⚠️  Secondary MongoDB connection disconnected');
+    });
+
+    // Store secondary connection globally
+    global.shopifyDbConnection = shopifyConnection;
+
+    // Handle connection events for primary connection
     mongoose.connection.on('error', (err) => {
       console.error('❌ MongoDB connection error:', err);
     });
@@ -39,7 +66,10 @@ export async function connectDB() {
     // Graceful shutdown
     process.on('SIGINT', async () => {
       await mongoose.connection.close();
-      console.log('🔌 MongoDB connection closed due to app termination');
+      if (global.shopifyDbConnection) {
+        await global.shopifyDbConnection.close();
+      }
+      console.log('🔌 MongoDB connections closed due to app termination');
       process.exit(0);
     });
 
@@ -70,7 +100,10 @@ export async function connectDB() {
 export async function disconnectDB() {
   try {
     await mongoose.connection.close();
-    console.log('🔌 MongoDB connection closed');
+    if (global.shopifyDbConnection) {
+      await global.shopifyDbConnection.close();
+    }
+    console.log('🔌 MongoDB connections closed');
   } catch (error) {
     console.error('❌ Error closing MongoDB connection:', error.message);
     throw error;
