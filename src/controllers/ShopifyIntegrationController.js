@@ -1,4 +1,4 @@
-import ShopifyShop from '../models/ShopifyShopModel.js';
+import getShopifyShopModel from '../models/ShopifyShopModel.js';
 import CSSProcessor from '../services/CSSProcessor.js';
 import BunnyCDNService from '../services/BunnyCDNService.js';
 import LoggerService from '../logs/Logger.js';
@@ -24,6 +24,9 @@ class ShopifyIntegrationController {
         });
       }
 
+      // Get model from secondary connection
+      const ShopifyShop = getShopifyShopModel();
+      
       // Get shop data with template groups
       const shopData = await ShopifyShop.findOne({ shop });
       
@@ -138,6 +141,8 @@ class ShopifyIntegrationController {
     try {
       const { shop, template } = req.params;
 
+      // Get model from secondary connection
+      const ShopifyShop = getShopifyShopModel();
       const shopData = await ShopifyShop.findOne({ shop });
       
       if (!shopData?.critical_css) {
@@ -180,6 +185,8 @@ class ShopifyIntegrationController {
     try {
       const { shop } = req.params;
 
+      // Get model from secondary connection
+      const ShopifyShop = getShopifyShopModel();
       const shopData = await ShopifyShop.findOne({ shop });
       
       if (!shopData) {

@@ -38,6 +38,7 @@ const ShopifyShopSchema = new mongoose.Schema({
 
 /**
  * Get ShopifyShop model using secondary connection to RLPlatforms database
+ * This is a getter function to avoid initialization timing issues
  * @returns {mongoose.Model}
  */
 const getShopifyShopModel = () => {
@@ -50,4 +51,5 @@ const getShopifyShopModel = () => {
          global.shopifyDbConnection.model('ShopifyShop', ShopifyShopSchema);
 };
 
-export default getShopifyShopModel();
+// Export the getter function, NOT the model instance
+export default getShopifyShopModel;
