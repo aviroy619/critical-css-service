@@ -1,0 +1,33 @@
+{
+  "name": "critical-css-service",
+  "version": "1.0.0",
+  "description": "A microservice to generate and manage critical CSS for Shopify and other sites",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --max-old-space-size=4096 src/app.js",
+    "dev": "nodemon --max-old-space-size=4096 src/app.js"
+  },
+  "dependencies": {
+    "critical": "^6.0.0",
+    "express": "^4.19.0",
+    "mongoose": "^8.3.2",
+    "puppeteer": "^22.6.5",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "critical-css",
+    "shopify",
+    "performance",
+    "express",
+    "puppeteer"
+  ],
+  "author": "Abhi",
+  "license": "MIT"
+}

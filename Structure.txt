@@ -1,0 +1,150 @@
+Critical CSS Service – Structure Document (v1.1)
+================================================
+
+1. Project Overview
+-------------------
+- Service name: critical-css-service
+- Purpose: Generate, store, and serve Critical CSS per shop & template.
+- Tech stack: Node.js, Express, MongoDB, Puppeteer, Penthouse (critical library).
+- Hosting: Vultr (/apps/critical-css-service)
+- Repo: GitHub (critical-css-service)
+- Database: MongoDB Atlas
+  - Cluster: shopify
+  - Database: CriticalCssService
+  - Collection: templates
+
+2. Folder Structure
+-------------------
+critical-css-service/
+│
+├── src/
+│   ├── config/
+│   │   ├── config.js            # ✅ Env + service config (stable)
+│   │   └── db.js                # ✅ Mongo connection utility (stable)
+│   │
+│   ├── models/
+│   │   └── CriticalCssModel.js  # Mongo schema
+│   │
+│   ├── controllers/
+│   │   └── CriticalCssController.js  # Controller functions
+│   │
+│   ├── services/
+│   │   ├── CSSProcessor.js      # Generator logic
+│   │   └── ScreenshotService.js # Optional debugging screenshots
+│   │
+│   ├── routes/
+│   │   └── criticalCssRoutes.js # REST endpoints
+│   │
+│   ├── logs/
+│   │   └── app.log              # Logs (rotated)
+│   │
+│   └── app.js                   # Express entrypoint
+│
+├── tests/
+│   ├── criticalCss.test.js
+│   ├── cssProcessor.test.js
+│   ├── screenshotService.test.js
+│   └── browserPool.test.js
+│
+├── .env
+├── .gitignore
+├── package.json
+└── README.md
+
+3. MongoDB Schema
+-----------------
+Collection: templates
+
+Each document represents Critical CSS data for a shop + template.
+
+{
+  "_id": ObjectId,
+  "shop": "string",              // e.g. "mystore.myshopify.com"
+  "template": "string",          // e.g. "product", "home", "collection"
+  "url": "string",               // URL used for CSS generation
+  "critical_css": "string",      // Minified critical CSS
+  "enabled": true,               // Whether CSS injection is active
+  "metadata": {
+    "size": 24500,               // bytes
+    "generatedAt": "2025-10-02T12:00:00Z",
+    "error": null                // error msg if failed
+  }
+}
+
+Index:
+- Compound index { shop: 1, template: 1 } (unique)
+
+4. API Endpoints (REST)
+-----------------------
+Core:
+- POST /critical-css/generate
+  Body: { shop, template, url }
+  Runs generator, saves CSS in DB.
+
+- GET /critical-css/:shop/:template
+  Returns { css, metadata }.
+
+- POST /critical-css/:shop/:template/disable
+  Sets enabled = false.
+
+- POST /critical-css/:shop/:template/regenerate
+  Forces regeneration and updates DB.
+
+Debug & Reports:
+- GET /critical-css/:shop/:template/screenshot
+  Returns screenshot path for visual comparison.
+
+- GET /critical-css/:shop/:template/metadata
+  Returns only metadata (size, generatedAt, error).
+
+5. Config / Env Variables
+-------------------------
+File: .env
+
+PORT=3010
+MONGO_URI=mongodb+srv://homelappy:Yogi2027@shopify.6c0ab2b.mongodb.net/?retryWrites=true&w=majority&appName=shopify
+MONGO_DB=CriticalCssService
+LOG_LEVEL=debug
+PUPPETEER_TIMEOUT=120000
+USER_AGENT=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
+
+6. Logs & Screenshots
+---------------------
+- Logs: /src/logs/app.log (rotated weekly).
+- Screenshots: /src/logs/screenshots/{shop}-{template}.png (debug mode only).
+- Production: screenshots disabled unless DEBUG=true.
+
+7. Controllers & Routes
+-----------------------
+Controllers (src/controllers/CriticalCssController.js):
+- generateCriticalCss
+- getCriticalCss
+- disableCriticalCss
+- regenerateCriticalCss
+- getCriticalCssMetadata
+- getCriticalCssScreenshot
+
+Routes (src/routes/criticalCssRoutes.js):
+- POST /generate → generateCriticalCss
+- GET /:shop/:template → getCriticalCss
+- POST /:shop/:template/disable → disableCriticalCss
+- POST /:shop/:template/regenerate → regenerateCriticalCss
+- GET /:shop/:template/metadata → getCriticalCssMetadata
+- GET /:shop/:template/screenshot → getCriticalCssScreenshot
+
+8. Testing Strategy
+-------------------
+- Unit tests: For CSSProcessor, ScreenshotService, BrowserPool, Model.
+- Integration tests: Hitting POST /generate & checking DB insert.
+- Visual tests: Compare screenshot with/without critical CSS (manual check).
+
+9. Rollout Steps
+----------------
+1. Create DB CriticalCssService with collection templates.
+2. Clone repo → set up structure.
+3. Implement CriticalCssModel.js with schema above.
+4. Implement generator in CSSProcessor.js.
+5. Wire endpoints via criticalCssRoutes.js.
+6. Add routes in app.js (mount at /critical-css).
+7. Test with 1–2 Shopify template URLs.
+8. Add admin panel controls later (Phase 4).
