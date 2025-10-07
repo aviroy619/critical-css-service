@@ -100,7 +100,7 @@ app.use((req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
+//
 // ============================================================================
 // ERROR HANDLER
 // ============================================================================
@@ -112,6 +112,7 @@ app.use((err, req, res, next) => {
     method: req.method,
     path: req.path
   });
+  //
 
   res.status(err.status || 500).json({
     error: 'Internal Server Error',

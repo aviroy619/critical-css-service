@@ -1,4 +1,3 @@
-// src/controllers/ShopifyIntegrationController.js
 import ShopifyShop from '../models/ShopifyShopModel.js';
 import CSSProcessor from '../services/CSSProcessor.js';
 import BunnyCDNService from '../services/BunnyCDNService.js';
