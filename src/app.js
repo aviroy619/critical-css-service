@@ -14,10 +14,10 @@
 import express from 'express';
 import { connectDB, disconnectDB } from './config/db.js';
 import criticalCssRoutes from './routes/criticalCssRoutes.js';
+import shopifyRoutes from './routes/shopifyRoutes.js';
 import LoggerService from './logs/Logger.js';
 import { defaultPool as BrowserPool } from './services/BrowserPool.js';
 import config from './config/config.js';
-import shopifyRoutes from './routes/shopifyRoutes.js';
 
 // ============================================================================
 // EXPRESS APP INITIALIZATION
@@ -89,6 +89,12 @@ app.get('/health', (req, res) => {
  */
 app.use('/api/critical-css', criticalCssRoutes);
 
+/**
+ * Mount Shopify integration routes at /api/shopify
+ * Handles CSS generation for Shopify templates
+ */
+app.use('/api/shopify', shopifyRoutes);
+
 // ============================================================================
 // 404 HANDLER
 // ============================================================================
@@ -100,7 +106,7 @@ app.use((req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-//
+
 // ============================================================================
 // ERROR HANDLER
 // ============================================================================
@@ -112,7 +118,6 @@ app.use((err, req, res, next) => {
     method: req.method,
     path: req.path
   });
-  //
 
   res.status(err.status || 500).json({
     error: 'Internal Server Error',
@@ -122,8 +127,6 @@ app.use((err, req, res, next) => {
     timestamp: new Date().toISOString()
   });
 });
-// Mount Shopify integration routes
-app.use('/api/shopify', shopifyRoutes);
 
 // ============================================================================
 // SERVER STARTUP
@@ -155,6 +158,7 @@ async function start() {
       });
       
       LoggerService.info(`📍 API available at http://localhost:${PORT}/api/critical-css`);
+      LoggerService.info(`🔗 Shopify API at http://localhost:${PORT}/api/shopify`);
       LoggerService.info(`💚 Health check at http://localhost:${PORT}/health`);
     });
 
