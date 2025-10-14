@@ -31,8 +31,7 @@ export async function connectDB() {
     }
 
     // Create secondary connection to Shopify database (RLPlatforms)
-    const shopifyUri = 'mongodb+srv://rlplatforms_user:StrongPass123!@shopify.6c0ab2b.mongodb.net/RLPlatforms?retryWrites=true&w=majority&appName=shopify';
-    
+const shopifyUri = 'mongodb+srv://homelappy:Yogi2027@shopify.6c0ab2b.mongodb.net/RLPlatforms?retryWrites=true&w=majority&appName=shopify';    
     const shopifyConnection = mongoose.createConnection(shopifyUri, {
       dbName: 'RLPlatforms',
       useNewUrlParser: true,
