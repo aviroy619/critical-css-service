@@ -4,6 +4,7 @@ import CSSProcessor from '../services/CSSProcessor.js';
 import ScreenshotService from '../services/ScreenshotService.js';
 import config from '../config/config.js';
 import LoggerService from '../logs/Logger.js';
+import BunnyCDNService from '../services/BunnyCDNService.js';
 
 const cssProcessor = new CSSProcessor();
 const screenshotService = new ScreenshotService();
@@ -92,13 +93,27 @@ async function saveGeneratedCss(result, shop, template, url, existing = null) {
     return null;
   }
 
-  logger.debug(`Generated ${css.length} bytes of CSS for ${shop}/${template}`);
+ logger.debug(`Generated ${css.length} bytes of CSS for ${shop}/${template}`);
+
+  // Upload to Bunny CDN
+  let cdnUrl = null;
+  try {
+    cdnUrl = await BunnyCDNService.uploadCSS(shop, template, css);
+    logger.info(`✅ Uploaded to Bunny CDN: ${cdnUrl}`, { shop, template });
+  } catch (cdnError) {
+    logger.warn(`⚠️ Failed to upload to Bunny CDN, continuing anyway`, {
+      shop,
+      template,
+      error: cdnError.message
+    });
+  }
 
   const saved = await CriticalCssModel.upsertCriticalCss({
     shop,
     template,
     url,
     critical_css: css,
+    cdn_url: cdnUrl,
     metadata: {
       ...metadata,
       size: Buffer.byteLength(css, 'utf8'),

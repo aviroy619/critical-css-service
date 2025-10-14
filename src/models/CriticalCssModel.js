@@ -151,12 +151,19 @@ const CriticalCssSchema = new mongoose.Schema(
       default: ''
     },
 
-    enabled: {
+      enabled: {
       type: Boolean,
       required: true,
       default: true,
       index: true
     },
+
+    cdn_url: {
+      type: String,
+      required: false,
+      default: null
+    },
+
 
     metadata: {
       size: {
