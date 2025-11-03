@@ -43,27 +43,25 @@ class BrowserPool {
     
     // Browser launch options with improved stability flags
     this.launchOptions = {
-      headless: 'new',
-      args: [
-               '--no-sandbox',
-  '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',
-  '--disable-extensions',
-  '--disable-gpu',
-  '--disable-dev-tools',
-  '--disable-software-rasterizer',
-  '--disable-features=IsolateOrigins,site-per-process',
-  '--disable-background-networking',
-  '--no-zygote',
-  '--hide-scrollbars',
-  '--mute-audio',
-  '--window-size=1440,900',
-  '--ignore-certificate-errors'
-      ],
-      timeout: this.launchTimeout,
-      ignoreHTTPSErrors: true,
-      ...options.launchOptions
-    };
+  headless: true,
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--disable-software-rasterizer",
+    "--window-size=1920,1080",
+    "--disable-infobars",
+    "--disable-web-security",
+    "--ignore-certificate-errors",
+    "--disable-features=IsolateOrigins,site-per-process",
+    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118 Safari/537.36"
+  ],
+  timeout: this.launchTimeout,
+  ignoreHTTPSErrors: true,
+  ...options.launchOptions
+};
+
 
     // Periodic cleanup of idle browsers
     this.cleanupInterval = setInterval(() => this.cleanupIdleBrowsers(), 10000);
