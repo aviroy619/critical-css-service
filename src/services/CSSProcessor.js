@@ -1,5 +1,5 @@
 // src/services/CSSProcessor.js
-//
+
 import { generate } from 'critical';
 import LoggerService from '../logs/Logger.js';
 import { getPool } from '../services/BrowserPool.js';
@@ -20,126 +20,104 @@ class CSSProcessor {
         return {
           css: '',
           metadata: { success: false, error: 'Invalid URL', url: config.url },
-          error: 'Invalid URL',
+          error: 'Invalid URL'
         };
       }
 
-      const viewportsToProcess = [
+      const viewports = [
         { width: 360, height: 800 },
         { width: 1366, height: 768 },
-        { width: 1920, height: 1080 },
+        { width: 1920, height: 1080 }
       ];
 
-      // Process each viewport with a fresh browser instance
-      for (const viewport of viewportsToProcess) {
+      for (const vp of viewports) {
         let browser = null;
         try {
-          this.logger.debug(`Generating critical CSS for ${config.url} at ${viewport.width}x${viewport.height}`);
-          
-          // Acquire fresh browser for each viewport to prevent memory issues
+          this.logger.info(`Generating critical CSS @ ${vp.width}x${vp.height}`);
+
           browser = await this.browserPool.acquire();
-          
-          const result = await generate({
+
+          const r = await generate({
             src: config.url,
-            width: viewport.width,
-            height: viewport.height,
+            width: vp.width,
+            height: vp.height,
             inline: false,
             rebase: false,
-            penthouse: {
-              puppeteer: { getBrowser: () => browser },
-            },
+            penthouse: { puppeteer: { getBrowser: () => browser } }
           });
 
-          if (result && result.css) {
-            const mediaQuery = this.getMediaQueryForViewport(viewport);
-            criticalCss += mediaQuery
-              ? `@media ${mediaQuery} { ${result.css} }`
-              : result.css;
+          if (r && r.css && r.css.trim().length > 0) {
+            const mq = this.getMediaQueryForViewport(vp);
+            criticalCss += mq ? `@media ${mq}{${r.css}}` : r.css;
+          } else {
+            partial = true;
+            this.logger.warn(`Viewport ${vp.width}x${vp.height} returned empty CSS`);
           }
-          
-          this.logger.debug(`Successfully generated CSS for viewport ${viewport.width}x${viewport.height}`);
-          
-        } catch (vpErr) {
-          this.logger.warn(`Failed to generate critical CSS for viewport ${viewport.width}x${viewport.height}`, { error: vpErr.message });
+        } catch (err) {
           partial = true;
+          this.logger.warn(`Viewport ${vp.width}x${vp.height} failed`, { error: err.message });
         } finally {
-          // Always release browser after each viewport to free memory
-          if (browser) {
-            await this.browserPool.release(browser);
-          }
+          if (browser) await this.browserPool.release(browser);
         }
       }
 
-      // Minify concatenated CSS
-      if (criticalCss && typeof criticalCss === 'string') {
-        // collapse whitespace and remove comments
+      // Minify CSS
+      if (criticalCss) {
         criticalCss = criticalCss
-          .replace(/\/\*[\s\S]*?\*\//g, '') // strip CSS comments
+          .replace(/\/\*[\s\S]*?\*\//g, '')
           .replace(/\s+/g, ' ')
           .trim();
       }
 
       const duration = Date.now() - startTime;
 
-     // If at least some CSS was collected, return what we have even if partial
-if (criticalCss && criticalCss.length > 0) {
-  return {
-    css: criticalCss,
-    metadata: {
-      success: !partial,
-      partial,
-      duration,
-      viewports: viewportsToProcess.length,
-      url: config.url,
-      size: criticalCss.length,
-    },
-    error: partial ? 'Partial viewport CSS generated' : null,
-  };
-}
+      // ✅ At least some CSS generated
+      if (criticalCss && criticalCss.length > 0) {
+        return {
+          css: criticalCss,
+          metadata: {
+            success: !partial,
+            partial,
+            duration,
+            url: config.url,
+            viewports: viewports.length,
+            size: criticalCss.length
+          },
+          error: partial ? 'Partial viewport CSS generated' : null
+        };
+      }
 
-// If absolutely nothing was generated, then fail
-return {
-  css: '',
-  metadata: {
-    success: false,
-    duration,
-    viewports: viewportsToProcess.length,
-    url: config.url,
-    warning: 'empty',
-    partial,
-  },
-  error: partial
-    ? 'Generated nothing (some viewports failed)'
-    : 'No critical CSS generated for any viewport',
-};
-
-
-      return {
-        css: criticalCss,
-        metadata: {
-          success: true,
-          duration,
-          viewports: viewportsToProcess.length,
-          url: config.url,
-          size: criticalCss.length,
-          partial,
-        },
-        error: null,
-      };
-    } catch (err) {
-      this.logger.error(`Critical CSS generation failed for ${config.url}`, { error: err.message });
+      // ❌ Nothing generated at all
       return {
         css: '',
-        metadata: { success: false, duration: Date.now() - startTime, url: config.url },
-        error: `Critical CSS generation failed: ${err.message}`,
+        metadata: {
+          success: false,
+          partial,
+          duration,
+          url: config.url,
+          viewports: viewports.length
+        },
+        error: partial
+          ? 'Generated nothing (some viewports failed)'
+          : 'No critical CSS generated for any viewport'
+      };
+
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      this.logger.error(`Critical CSS generation failed for ${config.url}`, { error: err.message });
+
+      return {
+        css: '',
+        metadata: { success: false, duration, url: config.url },
+        error: `Critical CSS generation failed: ${err.message}`
       };
     }
   }
 
-  getMediaQueryForViewport(viewport) {
-    if (viewport.width <= 480) return 'only screen and (max-width: 480px)';
-    if (viewport.width <= 768) return 'only screen and (max-width: 768px)';
-    if (viewport.width <= 1366) return 'only screen and (max-width: 1366px)';
+  getMediaQueryForViewport(vp) {
+    if (vp.width <= 480) return 'only screen and (max-width: 480px)';
+    if (vp.width <= 768) return 'only screen and (max-width: 768px)';
+    if (vp.width <= 1366) return 'only screen and (max-width: 1366px)';
     return null;
   }
 
