@@ -18,45 +18,42 @@ class CSSProcessor {
   const successfulViewports = [];
   const failedViewports = [];
 
+  // Validate URL early and safely
+  if (!this.isValidUrl(config.url)) {
+    const duration = Date.now() - startTime;
+
+    this.logger.warn(`❌ Invalid URL provided`, { url: config.url });
+
+    return {
+      css: '',
+      metadata: {
+        success: false,
+        partial: false,
+        duration,
+        url: config.url,
+        viewportsTested: 0,
+        successfulViewports: [],
+        failedViewports: []
+      },
+      error: 'Invalid URL'
+    };
+  }
+
   try {
-    if (!this.isValidUrl(config.url)) {
-      this.logger.warn(`❌ Critical CSS empty`, {
-  url: config.url,
-  successfulViewports,
-  failedViewports
-});
-
-return {
-  css: '',
-  metadata: {
-    success: false,
-    partial,
-    duration,
-    url: config.url,
-    viewportsTested: viewports.length,
-    successfulViewports,
-    failedViewports
-  },
-  error: partial
-    ? 'Generated nothing (some viewports failed)'
-    : 'No critical CSS generated for any viewport'
-};
-
-    }
-
     const viewports = [
-      { width: 360, height: 800 },
-            { width: 1920, height: 1080 }
+      { width: 360, height: 800 },      // mobile
+      { width: 1920, height: 1080 }     // desktop
     ];
 
     for (const vp of viewports) {
       let browser = null;
+
       try {
-        this.logger.info(`Generating critical CSS @ ${vp.width}x${vp.height}`);
+        this.logger.info(`🎯 Generating critical CSS @ ${vp.width}x${vp.height}`);
 
         browser = await this.browserPool.acquire();
 
-        const r = await generate({
+        const result = await generate({
           src: config.url,
           width: vp.width,
           height: vp.height,
@@ -65,22 +62,24 @@ return {
           penthouse: { puppeteer: { getBrowser: () => browser } }
         });
 
-        if (r && r.css && r.css.trim().length > 0) {
+        if (result && result.css && result.css.trim().length > 0) {
           successfulViewports.push(`${vp.width}x${vp.height}`);
 
           const mq = this.getMediaQueryForViewport(vp);
-          criticalCss += mq ? `@media ${mq}{${r.css}}` : r.css;
+
+          // Wrap mobile result in MQ, desktop stays global
+          criticalCss += mq ? `@media ${mq}{${result.css}}` : result.css;
 
         } else {
           partial = true;
           failedViewports.push(`${vp.width}x${vp.height}`);
-          this.logger.warn(`Viewport ${vp.width}x${vp.height} returned empty CSS`);
+          this.logger.warn(`⚠️ Empty CSS @ ${vp.width}x${vp.height}`);
         }
 
       } catch (err) {
         partial = true;
         failedViewports.push(`${vp.width}x${vp.height}`);
-        this.logger.warn(`Viewport ${vp.width}x${vp.height} failed`, { error: err.message });
+        this.logger.warn(`❌ Failure @ ${vp.width}x${vp.height}`, { error: err.message });
       } finally {
         if (browser) await this.browserPool.release(browser);
       }
@@ -96,31 +95,30 @@ return {
 
     const duration = Date.now() - startTime;
 
+    // Successful extraction of at least one viewport
     if (criticalCss && criticalCss.length > 0) {
-  this.logger.info(`✅ Critical CSS extracted`, {
-    url: config.url,
-    successfulViewports,
-    failedViewports,
-    partial,
-    size: criticalCss.length
-  });
+      return {
+        css: criticalCss,
+        metadata: {
+          success: !partial,
+          partial,
+          duration,
+          url: config.url,
+          viewportsTested: viewports.length,
+          size: criticalCss.length,
+          successfulViewports,
+          failedViewports
+        },
+        error: partial ? 'Partial viewport CSS generated' : null
+      };
+    }
 
-  return {
-    css: criticalCss,
-    metadata: {
-      success: !partial,
-      partial,
-      duration,
+    // Nothing extracted
+    this.logger.warn(`❌ Critical CSS empty`, {
       url: config.url,
-      viewportsTested: viewports.length,
-      size: criticalCss.length,
       successfulViewports,
       failedViewports
-    },
-    error: partial ? 'Partial viewport CSS generated' : null
-  };
-}
-
+    });
 
     return {
       css: '',
@@ -140,7 +138,7 @@ return {
 
   } catch (err) {
     const duration = Date.now() - startTime;
-    this.logger.error(`Critical CSS generation failed for ${config.url}`, { error: err.message });
+    this.logger.error(`🔥 Critical CSS generation error`, { url: config.url, error: err.message });
 
     return {
       css: '',
