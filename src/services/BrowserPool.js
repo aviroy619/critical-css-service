@@ -251,49 +251,55 @@ class BrowserPool {
    * @returns {Promise<Object>} Browser instance
    */
   async _createBrowser() {
-  try {
-    this.logger.debug('BrowserPool: Creating new browser...');
-    
-    // Allow headless mode override via environment or options
-    const headlessMode = process.env.PUPPETEER_HEADLESS || this.launchOptions.headless || 'new';
-    
-    const browser = await puppeteer.launch({
-      ...this.launchOptions,
-      headless: headlessMode,
-      executablePath: '/root/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-extensions',
-        '--disable-gpu',
-        '--disable-dev-tools',
-        '--disable-software-rasterizer',
-        '--disable-features=IsolateOrigins,site-per-process',
-        '--disable-background-networking',
-        '--no-zygote',
-        '--hide-scrollbars',
-        '--mute-audio',
-        '--window-size=1920,1080',
-        '--ignore-certificate-errors',
-        '--disable-web-security',
-        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'
-      ]
-    });
-    
-    this.stats.created++;
-    this.logger.debug(`BrowserPool: Browser created successfully (total created: ${this.stats.created})`, {
-      busy: this.busyBrowsers.size,
-      available: this.availableBrowsers.length
-    });
-    
-    return browser;
-  } catch (error) {
-    this.stats.errors++;
-    this.logger.error(`BrowserPool: Failed to create browser: ${error.message}`);
-    throw error;
+    try {
+      this.logger.debug('BrowserPool: Creating new browser...');
+      
+      // Allow headless mode override via environment or options
+      const headlessMode = process.env.PUPPETEER_HEADLESS || this.launchOptions.headless || 'new';
+      
+     const browser = await puppeteer.launch({
+  headless: headlessMode,
+  executablePath: '/root/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-extensions',
+    '--disable-software-rasterizer',
+    '--disable-background-networking',
+    '--disable-default-apps',
+    '--disable-sync',
+    '--disable-translate',
+    '--hide-scrollbars',
+    '--mute-audio',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--window-size=1920,1080',
+    '--ignore-certificate-errors',
+    '--disable-web-security',
+    '--disable-features=IsolateOrigins,site-per-process,BlockInsecurePrivateNetworkRequests',
+    '--disable-blink-features=AutomationControlled'
+  ],
+  ignoreHTTPSErrors: true,
+  timeout: this.launchTimeout
+});
+
+      
+      this.stats.created++;
+      this.logger.debug(`BrowserPool: Browser created successfully (total created: ${this.stats.created})`, {
+        busy: this.busyBrowsers.size,
+        available: this.availableBrowsers.length
+      });
+      
+      return browser;
+    } catch (error) {
+      this.stats.errors++;
+      this.logger.error(`BrowserPool: Failed to create browser: ${error.message}`);
+      throw error;
+    }
   }
-}
+
   /**
    * Destroy a browser instance
    * 
