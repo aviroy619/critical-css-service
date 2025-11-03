@@ -162,13 +162,20 @@ class CSSProcessor {
 }
 
 
-  getMediaQueryForViewport(vp) {
-  // Mobile CSS only
-  if (vp.width <= 480) return 'only screen and (max-width: 480px)';
+ getMediaQueryForViewport(vp) {
+  // Mobile CSS scope
+  if (vp.width <= 480) {
+    return 'only screen and (max-width: 480px)';
+  }
 
-  // Desktop CSS: no media query, apply globally
+  // Desktop CSS scope
+  if (vp.width >= 1024) {
+    return 'only screen and (min-width: 1024px)';
+  }
+
   return null;
 }
+
 
 
   isValidUrl(url) {
