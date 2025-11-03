@@ -255,10 +255,20 @@ class BrowserPool {
       // Allow headless mode override via environment or options
       const headlessMode = process.env.PUPPETEER_HEADLESS || this.launchOptions.headless || 'new';
       
-      const browser = await puppeteer.launch({
-        ...this.launchOptions,
-        headless: headlessMode
-      });
+     const browser = await puppeteer.launch({
+  ...this.launchOptions,
+  headless: headlessMode,
+  executablePath: '/root/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--single-process',
+    '--no-zygote'
+  ]
+});
+
       
       this.stats.created++;
       this.logger.debug(`BrowserPool: Browser created successfully (total created: ${this.stats.created})`, {

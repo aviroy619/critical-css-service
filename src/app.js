@@ -149,18 +149,19 @@ async function start() {
     LoggerService.info('MongoDB connected successfully');
 
     // Start HTTP server
-    server = app.listen(PORT, () => {
-      LoggerService.info(`🚀 Critical CSS Service started`, {
-        port: PORT,
-        environment: process.env.NODE_ENV || 'development',
-        nodeVersion: process.version,
-        pid: process.pid
-      });
-      
-      LoggerService.info(`📍 API available at http://localhost:${PORT}/api/critical-css`);
-      LoggerService.info(`🔗 Shopify API at http://localhost:${PORT}/api/shopify`);
-      LoggerService.info(`💚 Health check at http://localhost:${PORT}/health`);
-    });
+  server = app.listen(PORT, '0.0.0.0', () => {
+  LoggerService.info(`🚀 Critical CSS Service started`, {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    nodeVersion: process.version,
+    pid: process.pid
+  });
+  
+  LoggerService.info(`📍 API available at http://0.0.0.0:${PORT}/api/critical-css`);
+  LoggerService.info(`🔗 Shopify API at http://0.0.0.0:${PORT}/api/shopify`);
+  LoggerService.info(`💚 Health check at http://0.0.0.0:${PORT}/health`);
+});
+
 
     // Handle server errors
     server.on('error', (error) => {
