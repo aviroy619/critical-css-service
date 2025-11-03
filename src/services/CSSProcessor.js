@@ -46,8 +46,7 @@ return {
 
     const viewports = [
       { width: 360, height: 800 },
-      { width: 1366, height: 768 },
-      { width: 1920, height: 1080 }
+            { width: 1920, height: 1080 }
     ];
 
     for (const vp of viewports) {
@@ -159,11 +158,13 @@ return {
 
 
   getMediaQueryForViewport(vp) {
-    if (vp.width <= 480) return 'only screen and (max-width: 480px)';
-    if (vp.width <= 768) return 'only screen and (max-width: 768px)';
-    if (vp.width <= 1366) return 'only screen and (max-width: 1366px)';
-    return null;
-  }
+  // Mobile CSS only
+  if (vp.width <= 480) return 'only screen and (max-width: 480px)';
+
+  // Desktop CSS: no media query, apply globally
+  return null;
+}
+
 
   isValidUrl(url) {
     try {
