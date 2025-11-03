@@ -81,22 +81,38 @@ class CSSProcessor {
 
       const duration = Date.now() - startTime;
 
-      if (!criticalCss) {
-        return {
-          css: '',
-          metadata: {
-            success: false,
-            duration,
-            viewports: viewportsToProcess.length,
-            url: config.url,
-            warning: 'empty',
-            partial,
-          },
-          error: partial
-            ? 'No critical CSS generated (partial viewport failures occurred)'
-            : 'No critical CSS generated for any viewport',
-        };
-      }
+     // If at least some CSS was collected, return what we have even if partial
+if (criticalCss && criticalCss.length > 0) {
+  return {
+    css: criticalCss,
+    metadata: {
+      success: !partial,
+      partial,
+      duration,
+      viewports: viewportsToProcess.length,
+      url: config.url,
+      size: criticalCss.length,
+    },
+    error: partial ? 'Partial viewport CSS generated' : null,
+  };
+}
+
+// If absolutely nothing was generated, then fail
+return {
+  css: '',
+  metadata: {
+    success: false,
+    duration,
+    viewports: viewportsToProcess.length,
+    url: config.url,
+    warning: 'empty',
+    partial,
+  },
+  error: partial
+    ? 'Generated nothing (some viewports failed)'
+    : 'No critical CSS generated for any viewport',
+};
+
 
       return {
         css: criticalCss,
