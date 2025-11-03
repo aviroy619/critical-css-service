@@ -100,7 +100,7 @@ class CSSProcessor {
       return {
         css: criticalCss,
         metadata: {
-          success: !partial,
+          success: successfulViewports.length > 0,
           partial,
           duration,
           url: config.url,
