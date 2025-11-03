@@ -1,7 +1,8 @@
 // src/services/CSSProcessor.js
 
-import { generate } from 'critical';
-import penthouse from 'penthouse';
+import puppeteer from 'puppeteer';
+import postcss from 'postcss';
+import safeParser from 'postcss-safe-parser';
 import LoggerService from '../logs/Logger.js';
 import { getPool } from '../services/BrowserPool.js';
 
@@ -39,67 +40,100 @@ class CSSProcessor {
 
     try {
       const viewports = [
-        { width: 360, height: 800, method: 'critical' },      // mobile - use critical
-        { width: 1366, height: 768, method: 'penthouse' }     // desktop - use penthouse directly
+        { width: 360, height: 800 },      // mobile
+        { width: 1366, height: 768 }      // desktop
       ];
 
       for (const vp of viewports) {
         let browser = null;
+        let page = null;
 
         try {
-          this.logger.info(`🎯 Generating critical CSS @ ${vp.width}x${vp.height} (${vp.method})`);
+          this.logger.info(`🎯 Generating critical CSS @ ${vp.width}x${vp.height}`);
 
           browser = await this.browserPool.acquire();
+          page = await browser.newPage();
 
-          let result;
+          // Set viewport
+          await page.setViewport({
+            width: vp.width,
+            height: vp.height
+          });
 
-          if (vp.method === 'critical') {
-            // Use critical package for mobile
-            result = await generate({
-              src: config.url,
-              width: vp.width,
-              height: vp.height,
-              inline: false,
-              rebase: false,
-              penthouse: {
-                puppeteer: {
-                  getBrowser: () => browser
-                }
-              }
-            });
-          } else {
-            // Use penthouse directly for desktop (more stable)
-            const css = await penthouse({
-              url: config.url,
-              puppeteer: {
-                getBrowser: () => browser
-              },
-              width: vp.width,
-              height: vp.height,
-              timeout: 60000,
-              pageLoadSkipTimeout: 10000,
-              renderWaitTime: 1000,
-              blockJSRequests: false,
-              keepLargerMediaQueries: true
-            });
+          // Enable CSS coverage
+          await page.coverage.startCSSCoverage();
+
+          // Navigate to page
+          await page.goto(config.url, {
+            waitUntil: 'networkidle0',
+            timeout: 60000
+          });
+
+          // Wait a bit for any dynamic content
+          await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1000)));
+
+          // Get CSS coverage
+          const cssCoverage = await page.coverage.stopCSSCoverage();
+
+          // Extract used CSS
+          let viewportCss = '';
+          
+          for (const entry of cssCoverage) {
+            if (!entry.url) continue;
             
-            result = { css };
+            const css = entry.text || '';
+            const usedRanges = entry.ranges || [];
+            
+            // Extract only used CSS from ranges
+            for (const range of usedRanges) {
+              const usedCss = css.substring(range.start, range.end);
+              if (usedCss.trim()) {
+                viewportCss += usedCss + '\n';
+              }
+            }
           }
 
-          if (result && result.css && result.css.trim().length > 0) {
-            successfulViewports.push(`${vp.width}x${vp.height}`);
-            const mq = this.getMediaQueryForViewport(vp);
-            criticalCss += mq ? `@media ${mq}{${result.css}}` : result.css;
+          // Clean and parse CSS
+          if (viewportCss.trim().length > 0) {
+            try {
+              const cleanedCss = await this.cleanCSS(viewportCss);
+              
+              if (cleanedCss.trim().length > 0) {
+                successfulViewports.push(`${vp.width}x${vp.height}`);
+                const mq = this.getMediaQueryForViewport(vp);
+                criticalCss += mq ? `@media ${mq}{${cleanedCss}}` : cleanedCss;
+              } else {
+                partial = true;
+                failedViewports.push(`${vp.width}x${vp.height}`);
+                this.logger.warn(`⚠️ Empty CSS after cleaning @ ${vp.width}x${vp.height}`);
+              }
+            } catch (cleanError) {
+              partial = true;
+              failedViewports.push(`${vp.width}x${vp.height}`);
+              this.logger.warn(`⚠️ Error cleaning CSS @ ${vp.width}x${vp.height}`, { error: cleanError.message });
+            }
           } else {
             partial = true;
             failedViewports.push(`${vp.width}x${vp.height}`);
-            this.logger.warn(`⚠️ Empty CSS @ ${vp.width}x${vp.height}`);
+            this.logger.warn(`⚠️ No CSS captured @ ${vp.width}x${vp.height}`);
           }
+
+          // Close page
+          await page.close();
 
         } catch (err) {
           partial = true;
           failedViewports.push(`${vp.width}x${vp.height}`);
           this.logger.warn(`❌ Failure @ ${vp.width}x${vp.height}`, { error: err.message });
+          
+          // Try to close page if it exists
+          if (page) {
+            try {
+              await page.close();
+            } catch (closeErr) {
+              // Ignore close errors
+            }
+          }
         } finally {
           if (browser) {
             await this.browserPool.release(browser);
@@ -107,11 +141,12 @@ class CSSProcessor {
         }
       }
 
-      // Minify CSS
+      // Final minification
       if (criticalCss) {
         criticalCss = criticalCss
-          .replace(/\/\*[\s\S]*?\*\//g, '')
-          .replace(/\s+/g, ' ')
+          .replace(/\/\*[\s\S]*?\*\//g, '')  // Remove comments
+          .replace(/\s+/g, ' ')               // Collapse whitespace
+          .replace(/\s*([{}:;,])\s*/g, '$1') // Remove space around punctuation
           .trim();
       }
 
@@ -169,6 +204,22 @@ class CSSProcessor {
         },
         error: `Critical CSS generation failed: ${err.message}`
       };
+    }
+  }
+
+  /**
+   * Clean and optimize CSS using PostCSS
+   */
+  async cleanCSS(css) {
+    try {
+      const result = await postcss([]).process(css, { 
+        parser: safeParser,
+        from: undefined 
+      });
+      return result.css;
+    } catch (err) {
+      this.logger.warn('CSS cleaning failed, returning raw CSS', { error: err.message });
+      return css;
     }
   }
 
