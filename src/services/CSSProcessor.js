@@ -53,15 +53,22 @@ class CSSProcessor {
 
         browser = await this.browserPool.acquire();
 
-        const result = await generate({
-          src: config.url,
-          width: vp.width,
-          height: vp.height,
-          inline: false,
-          rebase: false,
-          penthouse: { puppeteer: { getBrowser: () => browser } }
-        });
-
+       const result = await generate({
+  src: config.url,
+  width: vp.width,
+  height: vp.height,
+  inline: false,
+  rebase: false,
+  penthouse: { 
+    puppeteer: { 
+      getBrowser: () => browser 
+    },
+    timeout: 60000,
+    pageLoadSkipTimeout: 5000,
+    renderWaitTime: 500,
+    blockJSRequests: false
+  }
+});
         if (result && result.css && result.css.trim().length > 0) {
           successfulViewports.push(`${vp.width}x${vp.height}`);
 
