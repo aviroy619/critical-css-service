@@ -98,10 +98,10 @@ class CSSProcessor {
     // Successful extraction of at least one viewport
     if (criticalCss && criticalCss.length > 0) {
       return {
-        css: criticalCss,
-        metadata: {
-          success: successfulViewports.length > 0,
-          partial,
+  css: criticalCss,
+  metadata: {
+    success: successfulViewports.length > 0, // treat single-viewport success as valid
+    partial: failedViewports.length > 0 && successfulViewports.length > 0,
           duration,
           url: config.url,
           viewportsTested: viewports.length,
