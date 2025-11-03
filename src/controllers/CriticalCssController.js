@@ -152,7 +152,7 @@ async function generateCriticalCss(req, res) {
       });
     }
 
-    // Validate shop domain format
+    // Validate shop domain
     if (!isValidShopDomain(shop)) {
       return res.status(400).json({
         ok: false,
@@ -164,45 +164,81 @@ async function generateCriticalCss(req, res) {
     if (!isValidTemplate(template)) {
       return res.status(400).json({
         ok: false,
-        error: 'Invalid template name. Must be 2-100 characters. Allowed: alphanumeric, hyphens, underscores, dots, and optional .json extension (e.g., product.custom.json)'
+        error: 'Invalid template name. Must be 2-100 chars. Allowed: alphanumeric, -, _, ., and optional .json'
       });
     }
 
-    logger.info(`Generating critical CSS for ${shop}/${template}`);
+    logger.info(`🚀 Starting Critical CSS for ${shop}/${template}`, { url });
 
-    // Generate critical CSS using CSSProcessor service
     const result = await cssProcessor.generateCriticalCSS({ url, shop, template });
 
-    // Use helper to save result
-    const saved = await saveGeneratedCss(result, shop, template, url);
+    const { css, metadata, error } = result;
 
-    if (!saved) {
-      return res.status(422).json({
+    logger.info(`Viewport Status`, {
+      successfulViewports: metadata?.successfulViewports,
+      failedViewports: metadata?.failedViewports
+    });
+
+    // No CSS produced
+    if (!css || !css.trim()) {
+      logger.warn(`❌ Critical CSS empty`, {
+        url,
+        successfulViewports: metadata?.successfulViewports,
+        failedViewports: metadata?.failedViewports
+      });
+
+      return res.status(200).json({
         ok: false,
-        error: result.error || result.metadata?.error || 'Failed to generate critical CSS'
+        error: error || 'No critical CSS generated',
+        ...metadata
       });
     }
+
+    // Partial success
+    if (metadata.partial) {
+      logger.warn(`⚠️ Partial CSS generated`, {
+        url,
+        successfulViewports: metadata.successfulViewports,
+        failedViewports: metadata.failedViewports
+      });
+
+      await saveGeneratedCss(result, shop, template, url);
+
+      return res.status(200).json({
+        ok: true,
+        partial: true,
+        css,
+        ...metadata,
+        message: 'Partial critical CSS generated'
+      });
+    }
+
+    // Full success
+    logger.info(`✅ Critical CSS fully generated`, {
+      url,
+      duration: metadata.duration,
+      size: metadata.size
+    });
+
+    await saveGeneratedCss(result, shop, template, url);
 
     return res.status(200).json({
       ok: true,
-      message: 'Critical CSS generated successfully',
-      data: {
-        shop: saved.shop,
-        template: saved.template,
-        size: saved.metadata.size,
-        generatedAt: saved.metadata.generatedAt,
-        partial: saved.metadata.partial || false
-      }
+      css,
+      ...metadata,
+      message: 'Critical CSS generated successfully'
     });
 
   } catch (error) {
-    logger.error('Error in generateCriticalCss:', error);
+    logger.error('🔥 Critical CSS error', { error: error.message });
+
     return res.status(500).json({
       ok: false,
       error: error.message || 'Internal server error'
     });
   }
 }
+
 
 /**
  * Get Critical CSS for a shop/template
