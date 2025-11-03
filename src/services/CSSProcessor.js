@@ -53,14 +53,35 @@ class CSSProcessor {
 
         browser = await this.browserPool.acquire();
 
-        const result = await generate({
-          src: config.url,
-          width: vp.width,
-          height: vp.height,
-          inline: false,
-          rebase: false,
-          penthouse: { puppeteer: { getBrowser: () => browser } }
-        });
+       const result = await Promise.race([
+  generate({
+    src: config.url,
+    width: vp.width,
+    height: vp.height,
+    inline: false,
+    rebase: false,
+    timeout: 60000, // 60 second timeout per viewport
+    penthouse: { 
+      puppeteer: { 
+        getBrowser: () => browser 
+      },
+      timeout: 60000,
+      maxEmbeddedBase64Length: 1000,
+      renderWaitTime: 100,
+      blockJSRequests: false,
+      propertiesToRemove: [
+        '(.*)transition(.*)',
+        'cursor',
+        'pointer-events',
+        '(-webkit-)?tap-highlight-color',
+        '(.*)user-select'
+      ]
+    }
+  }),
+  new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('CSS generation timeout')), 60000)
+  )
+]);
 
         if (result && result.css && result.css.trim().length > 0) {
           successfulViewports.push(`${vp.width}x${vp.height}`);
